@@ -61,6 +61,15 @@ AddOption('--minimal',
           default=os.path.exists(File('#.lfsconfig').abspath), # minimal by default on release branch (where there's no LFS)
           help='the minimum build to run openpilot. no tests, tools, etc.')
 
+# Check for arch linux as release
+def is_arch_linux():
+    if os.path.exists("/etc/os-release"):
+        with open("/etc/os-release") as f:
+            data = f.read()
+        return "ID=arch" in data or "ID_LIKE=arch" in data
+    return False
+
+
 ## Architecture name breakdown (arch)
 ## - larch64: linux tici aarch64
 ## - aarch64: linux pc aarch64
@@ -176,9 +185,7 @@ env = Environment(
     "#third_party/catch2/include",
     "#third_party/libyuv/include",
     "#third_party/json11",
-    # IMPORTANT: this bionic shim conflicts with system headers on host.
-    # Keep it OUT of host builds; add only for larch64 below as -isystem.
-    # "#third_party/linux/include",
+    "#third_party/linux/include",
     "#third_party",
     "#msgq",
   ],
@@ -254,16 +261,17 @@ else:
 np_version = SCons.Script.Value(np.__version__)
 Export('envCython', 'np_version')
 
-# Specialized env for third_party/json11 (relax -Werror, silence strict clang warn)
+# JSON build environment
 json_env = env.Clone()
-if '-Werror' in json_env['CCFLAGS']:
-  json_env['CCFLAGS'].remove('-Werror')
-if '-Werror' in json_env['CXXFLAGS']:
-  json_env['CXXFLAGS'].remove('-Werror')
-json_env.Append(CXXFLAGS=[
-  '-Wno-tautological-constant-out-of-range-compare',
-  '-Wno-sign-compare',
-])
+
+# Arch Linux: GCC/Clang on Arch ships with stricter defaults,
+# so suppress a few noisy warnings and ensure <stdint.h> is included.
+if is_arch_linux():
+    json_env.Append(CXXFLAGS=[
+      '-Wno-tautological-constant-out-of-range-compare',
+      '-Wno-sign-compare',
+      '-include', 'stdint.h',
+    ])
 
 # Qt build environment
 qt_env = env.Clone()

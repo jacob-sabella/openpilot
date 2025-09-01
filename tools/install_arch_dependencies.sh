@@ -25,10 +25,10 @@ if [[ "$INTERACTIVE" -eq 0 ]]; then
 fi
 
 install_arch_requirements() {
-	# Refresh mirrors/index and upgrade (TODO: Seems a little agressive)
-	# $SUDO pacman -Syu $PACMAN_OPTS
 
-	# Core toolchains & libs (Arch doesn't split -dev packages)
+  git lfs install || true
+
+	# Core toolchains & libs
 	$SUDO pacman -S $PACMAN_OPTS \
 		ca-certificates \
 		clang \
@@ -61,20 +61,13 @@ install_arch_requirements() {
 		python python-pip \
     arm-none-eabi-newlib
 
-    # TODO: This is not installing well
-    # yay -S qt5-serialbus
-
-	# Optional: ensure git-lfs is initialized for the invoking user
-	if [[ -n "${SUDO_USER:-}" ]]; then
-		sudo -u "$SUDO_USER" git lfs install || true
-	fi
+    yay -S qt5-serialbus
 }
 
 # Detect OS using /etc/os-release
 if [[ -f "/etc/os-release" ]]; then
 	. /etc/os-release
-	# Accept Arch and Arch-like distros (Manjaro, EndeavourOS, etc.)
-	if [[ "${ID:-}" == "arch" || "${ID_LIKE:-}" =~ arch ]]; then
+	if [[ "${ID:-}" == "arch"  ]]; then
 		install_arch_requirements
 	else
 		echo "$ID $VERSION_ID is unsupported here. This setup script is written for Arch-based systems."
